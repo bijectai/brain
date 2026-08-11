@@ -218,6 +218,10 @@ Prints the token **once**; only its SHA-256 is stored. The label is stamped onto
 every observation that token writes, so `created_by` tells you who recorded
 what. Send it over something private — it is a bearer credential.
 
+[docs/onboard-teammate.md](docs/onboard-teammate.md) has a copy-paste message to
+send them: one `claude mcp add` command, the Cursor equivalent, the convention
+to follow, and what to check if they get a 401.
+
 ### Grant a token a second project
 
 ```bash
