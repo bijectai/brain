@@ -1,4 +1,4 @@
-# Knowledge Graph MCP Server
+# Biject Brain
 
 A hosted, multi-tenant knowledge graph that AI coding agents read and write over
 the network. One Supabase Postgres database holds many **projects** (tenants);
