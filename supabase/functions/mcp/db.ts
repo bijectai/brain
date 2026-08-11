@@ -1,38 +1,56 @@
 import postgres from "npm:postgres@3.4.5";
 
-const DB_URL = Deno.env.get("MCP_DB_URL");
+/**
+ * Two ways to connect, in order of preference:
+ *
+ *  1. MCP_DB_URL -- a connection string for the dedicated `mcp_client` role.
+ *     This is the stronger configuration: the credential itself cannot bypass
+ *     RLS, so nothing the function does, correct or buggy, can escape tenant
+ *     scoping.
+ *
+ *  2. SUPABASE_DB_URL -- injected into every Edge Function automatically, but
+ *     it connects as `postgres`, which on Supabase carries BYPASSRLS. Used as
+ *     a fallback so the server runs without an operator having to set a secret
+ *     first. Safe only because withTenant() drops to mcp_client for the whole
+ *     of every request; see the note there.
+ *
+ * Set MCP_DB_URL in production. See the README's "Hardening" section.
+ */
+const DB_URL = Deno.env.get("MCP_DB_URL") ?? Deno.env.get("SUPABASE_DB_URL");
 if (!DB_URL) {
   throw new Error(
-    "MCP_DB_URL is not set. It must point at the pooler as the mcp_client " +
-      "role, e.g. postgresql://mcp_client:<pw>@<host>:6543/postgres",
+    "Neither MCP_DB_URL nor SUPABASE_DB_URL is set; cannot reach the database.",
   );
 }
 
-/**
- * One pool for the whole isolate. `prepare: false` is required because we go
- * through Supabase's transaction-mode pooler, which does not keep a session
- * around for named prepared statements.
- */
+export const usingDedicatedRole = Boolean(Deno.env.get("MCP_DB_URL"));
+
 export const sql = postgres(DB_URL, {
+  // Required when going through Supabase's transaction-mode pooler, which does
+  // not keep a session around for named prepared statements.
   prepare: false,
   max: 4,
   idle_timeout: 20,
   connect_timeout: 10,
-  // The connection carries no ambient tenant. Every statement that touches
-  // graph data runs inside withTenant() below.
   onnotice: () => {},
 });
 
 export type Sql = typeof sql;
 
 /**
- * Runs `fn` in a transaction whose `app.project_ids` GUC is set to the
- * projects this request is allowed to touch. Every RLS policy filters on that
- * GUC, so anything `fn` does is confined to those projects by the database
- * itself -- a missing WHERE clause cannot leak across tenants.
+ * Runs `fn` in a transaction that is (a) executing as `mcp_client` and (b)
+ * pinned to the given projects.
  *
- * The setting is transaction-local (`set_config(..., true)`), so it is gone
- * when the connection returns to the pool.
+ * The role switch matters as much as the tenant pin. `postgres` has BYPASSRLS
+ * on Supabase, so a transaction running as `postgres` would ignore every
+ * policy. `mcp_client` is NOBYPASSRLS and owns nothing, so once we drop to it
+ * the policies are live and a missing `where project_id = ...` returns nothing
+ * instead of leaking. Both settings are transaction-local, so they unwind when
+ * the connection goes back to the pool.
+ *
+ * search_path is set explicitly because SET ROLE does not apply the target
+ * role's configured search_path, and pg_trgm's `similarity`/`%` live in the
+ * `extensions` schema.
  */
 export function withTenant<T>(
   projectIds: string[],
@@ -42,6 +60,8 @@ export function withTenant<T>(
     return Promise.reject(new Error("Token is not granted access to any project."));
   }
   return sql.begin(async (tx) => {
+    await tx`set local role mcp_client`;
+    await tx`set local search_path = public, extensions`;
     await tx`select set_config('app.project_ids', ${projectIds.join(",")}, true)`;
     return await fn(tx as unknown as Sql);
   }) as Promise<T>;

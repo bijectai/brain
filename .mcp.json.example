@@ -1,7 +1,7 @@
 {
   "_comment": [
     "Claude Code MCP config. Copy to .mcp.json in the repo you want the agent",
-    "to have memory for, replace <PROJECT_REF>, and export your token:",
+    "to have memory for, then export your personal token:",
     "  export KNOWLEDGE_GRAPH_TOKEN=kgt_...",
     "The token is per-employee. Never commit it, and never put the Supabase",
     "service role key here -- it is not needed and stays server-side."
@@ -9,7 +9,7 @@
   "mcpServers": {
     "knowledge-graph": {
       "type": "http",
-      "url": "https://<PROJECT_REF>.supabase.co/functions/v1/mcp",
+      "url": "https://litdbmyvvqrbpocohlpw.supabase.co/functions/v1/mcp",
       "headers": {
         "Authorization": "Bearer ${KNOWLEDGE_GRAPH_TOKEN}"
       }

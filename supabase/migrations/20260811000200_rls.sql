@@ -19,8 +19,8 @@
 -- none of these tables are reachable over the auto-generated REST API.
 
 -- ---------------------------------------------------------------------------
--- The role the Edge Function uses. Password is set at deploy time by
--- scripts/setup.mjs; the role is unusable until then.
+-- The role the Edge Function uses. It is created NOLOGIN and stays unusable
+-- until `node scripts/admin.mjs init-role` gives it a password at deploy time.
 -- ---------------------------------------------------------------------------
 
 do $$

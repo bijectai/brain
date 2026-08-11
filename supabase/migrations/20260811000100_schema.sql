@@ -125,9 +125,13 @@ create table public.access_token_projects (
   primary key (token_id, project_id)
 );
 
+-- search_path is pinned on every function here: without it, unqualified names
+-- resolve against the caller's search_path, which lets anyone able to create
+-- objects shadow what the function meant to reference.
 create or replace function app.mirror_home_project()
 returns trigger
 language plpgsql
+set search_path = ''
 as $$
 begin
   insert into public.access_token_projects (token_id, project_id)
@@ -148,6 +152,7 @@ create trigger access_tokens_mirror_home_project
 create or replace function app.touch_updated_at()
 returns trigger
 language plpgsql
+set search_path = ''
 as $$
 begin
   new.updated_at = now();

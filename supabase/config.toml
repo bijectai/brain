@@ -1,5 +1,5 @@
 # Filled in by `supabase link --project-ref <ref>`.
-project_id = "REPLACE_WITH_PROJECT_REF"
+project_id = "litdbmyvvqrbpocohlpw"
 
 [functions.mcp]
 # The MCP endpoint authenticates with our own personal access tokens, carried

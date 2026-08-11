@@ -18,24 +18,30 @@ Claude Code / Cursor  ──HTTP+MCP──►  Edge Function  ──as mcp_clien
 
 ---
 
-## Status
+## Deployed endpoint
+
+```
+https://litdbmyvvqrbpocohlpw.supabase.co/functions/v1/mcp
+```
+
+Live on Supabase project `brain` (`litdbmyvvqrbpocohlpw`, us-east-2, Postgres 17).
 
 | Piece | State |
 |---|---|
-| Schema + RLS migrations | Written, applied and tested against Postgres 16 |
-| Edge Function (9 MCP tools) | Written, typechecked, exercised end to end under Deno |
-| Isolation test (21 checks) | **Passing** against a live server — see [Verification](#verification) |
-| Deployment to your Supabase project | **Blocked** — see [Deploying](#deploying) |
+| Schema + RLS migrations | Applied to production |
+| Edge Function (9 MCP tools) | Deployed, `verify_jwt = false`, responding |
+| Tenants | `brain`, `isolation-test` |
+| Tokens | one for `devrashie`, one for `test-employee` |
+| Isolation verified | **Yes** — over HTTPS against this endpoint, and at the database level. See [Verification](#verification) |
 
-Everything is verified locally. What's missing is the deploy, which needs
-credentials and network access this build environment doesn't have.
+One hardening step is outstanding: see [Hardening](#hardening).
 
 ---
 
 ## Layout
 
 ```
-supabase/migrations/    schema, RLS + roles, auth and admin functions
+supabase/migrations/    schema, RLS + roles, auth/admin functions, role membership
 supabase/functions/mcp/ the MCP server (index.ts, auth.ts, db.ts, tools.ts)
 scripts/admin.mjs       operator CLI: projects, tokens, grants, revocation
 scripts/rls-test.sql    database-level isolation proof
@@ -79,9 +85,45 @@ from the public PostgREST API — are granted nothing on any of these tables.
 `kgt_…` tokens only. Nothing in `.mcp.json` or `.cursor/mcp.json` grants
 database access on its own.
 
+### Hardening
+
+The function reads `MCP_DB_URL` if set and falls back to `SUPABASE_DB_URL`,
+which Supabase injects automatically. **It is currently running on the
+fallback**, because setting a function secret needs `supabase login` — a
+credential that only you have.
+
+That matters, because `SUPABASE_DB_URL` connects as `postgres`, and on Supabase
+`postgres` carries `BYPASSRLS`. A request running as `postgres` would ignore
+every policy above. `withTenant()` therefore drops to `mcp_client` with
+`set local role` before touching anything, which puts the policies back in
+force for the whole transaction — verified directly against this database, not
+assumed. So isolation holds today.
+
+It is still one line of defence rather than two: the *connection* remains
+capable of bypassing RLS, and only the wrapper keeps it from doing so. With
+`MCP_DB_URL` the credential itself cannot bypass RLS, so no wrapper has to be
+correct. To close that gap:
+
+```bash
+export ADMIN_DB_URL='postgresql://postgres:…@db.litdbmyvvqrbpocohlpw.supabase.co:5432/postgres'
+node scripts/admin.mjs init-role         # prints a generated password once
+
+supabase login
+supabase link --project-ref litdbmyvvqrbpocohlpw
+supabase secrets set MCP_DB_URL='postgresql://mcp_client:<PASSWORD>@<POOLER_HOST>:6543/postgres'
+supabase functions deploy mcp --no-verify-jwt
+```
+
+`<POOLER_HOST>` is the **transaction pooler** host from Project Settings →
+Database. No code changes are needed — the function picks up `MCP_DB_URL` on
+its own, and `set local role mcp_client` becomes a harmless no-op.
+
 ---
 
 ## Deploying
+
+Already done for `litdbmyvvqrbpocohlpw`; these are the steps for a second
+deployment, or to rebuild this one from scratch.
 
 ### 1. Link the project
 
@@ -302,6 +344,63 @@ token holds more than one.
 ---
 
 ## Verification
+
+### Against the deployed endpoint
+
+Both tenants were seeded through the live HTTPS endpoint with the two real
+employee tokens, and every cross-tenant access was attempted. Results:
+
+| Check | Result |
+|---|---|
+| `tools/list` returns all nine tools | pass |
+| Request with no token | `401 Missing bearer token.` |
+| Request with an invalid token | `401 Invalid or revoked token.` |
+| Each token writes to its own project | pass |
+| `devrashie` searches for the `isolation-test` entity | 0 entities |
+| `test-employee` searches for the `brain` entity | 0 entities |
+| Each token finds its *own* entity with the same query | pass (positive control) |
+| Full-text search over observation bodies | pass, within tenant only |
+| `read_graph` as `devrashie` | 2 entities, all `brain` |
+| `read_graph` as `test-employee` | 1 entity, all `isolation-test` |
+| `list_projects` per token | exactly one project each |
+| `test-employee` naming `project: "brain"` to **read** | refused |
+| `test-employee` naming `project: "brain"` to **write** | refused |
+| `test-employee` naming `project: "brain"` to **delete** | refused |
+
+The refusals come back as `Unknown or inaccessible project "brain". This token
+can access: isolation-test` — the server does not confirm that a project it
+cannot reach exists.
+
+This sandbox's egress is firewalled off from `*.supabase.co`, so these requests
+were driven from inside Postgres via `pg_net` rather than from a laptop. They
+were still ordinary HTTPS requests to the public endpoint with a bearer token.
+`pg_net` and its request log were dropped afterwards — that log records
+`Authorization` headers, i.e. the raw tokens.
+
+To re-run the same checks from your own machine at any time:
+
+```bash
+MCP_URL=https://litdbmyvvqrbpocohlpw.supabase.co/functions/v1/mcp \
+TOKEN_A=<your token> TOKEN_B=<test-employee token> \
+PROJECT_A=brain PROJECT_B=isolation-test \
+node scripts/isolation-test.mjs
+```
+
+### Against the production database
+
+Twelve database-level checks, run as `mcp_client` on the live database: live
+tokens resolve to exactly their own project; unknown and revoked tokens resolve
+to nothing; no raw token is stored; with no tenant context the role reads
+nothing; pinned to one tenant, foreign rows are invisible, cross-project
+`INSERT` and re-parenting `UPDATE` are refused with `insufficient_privilege`,
+and `access_tokens` is unreadable. All passing.
+
+Supabase's own security advisors report no warnings attributable to this
+schema. Two `rls_enabled_no_policy` INFO notices remain on `access_tokens` and
+`access_token_projects` — that is the intended deny-all design, not an
+oversight.
+
+### Locally, from scratch
 
 `./scripts/local-test.sh` brings up a throwaway Postgres, applies the
 migrations, and runs both suites. Results from the last run:
