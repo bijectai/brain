@@ -30,8 +30,8 @@ Live on Supabase project `brain` (`litdbmyvvqrbpocohlpw`, us-east-2, Postgres 17
 |---|---|
 | Schema + RLS migrations | Applied to production |
 | Edge Function (9 MCP tools) | Deployed, `verify_jwt = false`, responding |
-| Tenants | `brain`, `isolation-test` |
-| Tokens | one for `devrashie`, one for `test-employee` |
+| Tenants | `brain`, `biject`, `isolation-test` |
+| Tokens | `devrashie` on `brain`, `devrashie` on `biject`, `test-employee` on `isolation-test` |
 | Isolation verified | **Yes** — over HTTPS against this endpoint, and at the database level. See [Verification](#verification) |
 
 One hardening step is outstanding: see [Hardening](#hardening).
@@ -309,6 +309,14 @@ MCP `initialize` response, so compliant clients pick it up automatically.
 >
 > Record *why*, not *what*. The diff already says what changed; the graph is for
 > the reasoning that isn't recoverable from the code.
+
+### Seeding a repo that has no graph yet
+
+A new tenant starts empty, and the convention above only accumulates knowledge
+as people work. To give a repo a useful starting shape in one pass, see
+[docs/ingest-codebase.md](docs/ingest-codebase.md) — a ready-to-paste prompt
+that surveys the repo, picks a sensible granularity, and writes entities,
+observations and relations in batches.
 
 ### Use `search_nodes`, not `read_graph`
 
