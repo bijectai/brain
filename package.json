@@ -1,0 +1,21 @@
+{
+  "name": "knowledge-graph-mcp",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Multi-tenant knowledge graph MCP server on Supabase",
+  "scripts": {
+    "admin": "node scripts/admin.mjs",
+    "test:isolation": "node scripts/isolation-test.mjs",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "pg": "^8.13.1"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.2"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

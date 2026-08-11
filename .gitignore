@@ -1,0 +1,7 @@
+node_modules/
+.env
+.env.local
+.mcp.json
+.cursor/mcp.json
+supabase/.temp/
+supabase/.branches/

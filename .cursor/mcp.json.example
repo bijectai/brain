@@ -1,0 +1,17 @@
+{
+  "_comment": [
+    "Cursor MCP config. Copy to .cursor/mcp.json (per project) or",
+    "~/.cursor/mcp.json (all projects), replace <PROJECT_REF> and paste your",
+    "personal token in place of <YOUR_TOKEN>.",
+    "Cursor does not reliably expand ${ENV_VARS} in this file, so the token is",
+    "written literally -- keep .cursor/mcp.json out of version control."
+  ],
+  "mcpServers": {
+    "knowledge-graph": {
+      "url": "https://<PROJECT_REF>.supabase.co/functions/v1/mcp",
+      "headers": {
+        "Authorization": "Bearer <YOUR_TOKEN>"
+      }
+    }
+  }
+}

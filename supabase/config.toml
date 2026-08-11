@@ -1,0 +1,10 @@
+# Filled in by `supabase link --project-ref <ref>`.
+project_id = "REPLACE_WITH_PROJECT_REF"
+
+[functions.mcp]
+# The MCP endpoint authenticates with our own personal access tokens, carried
+# in the Authorization header. Supabase's default gateway check would reject
+# those as invalid Supabase JWTs before our code ever runs, so it is disabled
+# here. The function itself refuses every unauthenticated request.
+verify_jwt = false
+entrypoint = "./functions/mcp/index.ts"
