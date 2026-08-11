@@ -310,13 +310,21 @@ MCP `initialize` response, so compliant clients pick it up automatically.
 > Record *why*, not *what*. The diff already says what changed; the graph is for
 > the reasoning that isn't recoverable from the code.
 
-### Seeding a repo that has no graph yet
+### Onboarding a repo
+
+Two ready-to-paste Claude Code prompts, run in this order:
+
+1. **[docs/repo-setup.md](docs/repo-setup.md)** — writes `.mcp.json`, the
+   gitignore entries, the Cursor example and the `CLAUDE.md` convention, then
+   checks the token over `curl`. It verifies that way rather than through the
+   MCP tools because Claude Code loads MCP servers at startup: the session that
+   writes the config cannot use the server it just configured.
+2. **[docs/ingest-codebase.md](docs/ingest-codebase.md)** — after restarting,
+   seeds an empty graph in one pass: surveys the repo, picks a sensible
+   granularity, then writes entities, observations and relations in batches.
 
 A new tenant starts empty, and the convention above only accumulates knowledge
-as people work. To give a repo a useful starting shape in one pass, see
-[docs/ingest-codebase.md](docs/ingest-codebase.md) — a ready-to-paste prompt
-that surveys the repo, picks a sensible granularity, and writes entities,
-observations and relations in batches.
+as people work, so step 2 is what makes the graph useful on day one.
 
 ### Use `search_nodes`, not `read_graph`
 
