@@ -246,24 +246,39 @@ and redeploy. Employee tokens are unaffected.
 
 ## Client configuration
 
-### Claude Code — `.mcp.json`
+### Claude Code
+
+Register it in user scope with the token written literally:
+
+```bash
+claude mcp add --transport http knowledge-graph \
+  https://litdbmyvvqrbpocohlpw.supabase.co/functions/v1/mcp \
+  --header "Authorization: Bearer kgt_…"
+```
+
+Equivalently, a `.mcp.json` at the repo root with the token inlined — but then
+**gitignore it**, and commit a `.mcp.json.example` with a `<YOUR_TOKEN>`
+placeholder for teammates:
 
 ```json
 {
   "mcpServers": {
     "knowledge-graph": {
       "type": "http",
-      "url": "https://<PROJECT_REF>.supabase.co/functions/v1/mcp",
+      "url": "https://litdbmyvvqrbpocohlpw.supabase.co/functions/v1/mcp",
       "headers": {
-        "Authorization": "Bearer ${KNOWLEDGE_GRAPH_TOKEN}"
+        "Authorization": "Bearer <YOUR_TOKEN>"
       }
     }
   }
 }
 ```
 
-Then `export KNOWLEDGE_GRAPH_TOKEN=kgt_…` in your shell profile. Claude Code
-expands `${…}` here, so this file is safe to commit; the token isn't in it.
+A `${KNOWLEDGE_GRAPH_TOKEN}` placeholder here looks better — no secret in the
+file, so it could be committed — but don't. Expansion resolves against the
+environment Claude Code was *launched* in, so a variable set in your terminal
+is invisible to an app started from Spotlight or the Dock, and it fails as an
+opaque `401`. See [docs/repo-setup.md](docs/repo-setup.md#why-not-var).
 
 ### Cursor — `.cursor/mcp.json`
 

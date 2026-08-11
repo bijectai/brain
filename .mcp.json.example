@@ -1,17 +1,27 @@
 {
   "_comment": [
     "Claude Code MCP config. Copy to .mcp.json in the repo you want the agent",
-    "to have memory for, then export your personal token:",
-    "  export KNOWLEDGE_GRAPH_TOKEN=kgt_...",
-    "The token is per-employee. Never commit it, and never put the Supabase",
-    "service role key here -- it is not needed and stays server-side."
+    "to have memory for, and replace <YOUR_TOKEN> with your personal token.",
+    "",
+    "The real .mcp.json is gitignored because it holds a live credential --",
+    "this .example is the shareable copy. Equivalently, skip the file and run:",
+    "  claude mcp add --transport http knowledge-graph <url> \\",
+    "    --header \"Authorization: Bearer kgt_...\"",
+    "",
+    "Do NOT use a ${KNOWLEDGE_GRAPH_TOKEN} placeholder here. Expansion resolves",
+    "against the environment Claude Code was launched in, so it silently fails",
+    "with a 401 when the app is started from Spotlight or the Dock. See",
+    "docs/repo-setup.md.",
+    "",
+    "Never put the Supabase service role key here -- it is not needed and",
+    "stays server-side in the Edge Function."
   ],
   "mcpServers": {
     "knowledge-graph": {
       "type": "http",
       "url": "https://litdbmyvvqrbpocohlpw.supabase.co/functions/v1/mcp",
       "headers": {
-        "Authorization": "Bearer ${KNOWLEDGE_GRAPH_TOKEN}"
+        "Authorization": "Bearer <YOUR_TOKEN>"
       }
     }
   }
