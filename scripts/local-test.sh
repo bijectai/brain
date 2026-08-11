@@ -12,10 +12,12 @@ PGDATA_DIR=${PGDATA_DIR:-/var/tmp/kg-localtest}
 SOCK_DIR=/var/tmp/kg-localtest-sock
 PORT=${PORT:-55432}
 MCP_PORT=${MCP_PORT:-8000}
+DIGEST_PORT=${DIGEST_PORT:-8001}
 export PGHOST=127.0.0.1 PGPORT=$PORT PGUSER=postgres
 
 cleanup() {
   [[ -n "${MCP_PID:-}" ]] && kill "$MCP_PID" 2>/dev/null || true
+  [[ -n "${DIGEST_PID:-}" ]] && kill "$DIGEST_PID" 2>/dev/null || true
   su postgres -c "$PGBIN/pg_ctl -D $PGDATA_DIR -m fast stop" >/dev/null 2>&1 || true
 }
 trap cleanup EXIT
@@ -83,3 +85,21 @@ echo "== isolation suite (over HTTP, against the real server)"
 MCP_URL="http://127.0.0.1:$MCP_PORT" TOKEN_A=kgt_TESTA TOKEN_B=kgt_TESTB \
   PROJECT_A=acme-web PROJECT_B=acme-billing \
   node scripts/isolation-test.mjs
+
+echo "== serving kg-digest"
+KG_LOCAL_PORT="$DIGEST_PORT" \
+  MCP_DB_URL="postgresql://mcp_client:testpw@127.0.0.1:$PORT/postgres" \
+  deno run --allow-net --allow-env --allow-read --allow-sys \
+  supabase/functions/kg-digest/index.ts >/var/tmp/kg-digest.log 2>&1 &
+DIGEST_PID=$!
+for _ in $(seq 1 30); do
+  curl -s -o /dev/null "http://127.0.0.1:$DIGEST_PORT" && break
+  sleep 1
+done
+
+echo "== Discord digest suite"
+MCP_URL="http://127.0.0.1:$MCP_PORT" \
+  DIGEST_URL="http://127.0.0.1:$DIGEST_PORT" \
+  ADMIN_DB_URL="postgresql://postgres@127.0.0.1:$PORT/postgres" \
+  TOKEN_A=kgt_TESTA TOKEN_B=kgt_TESTB \
+  node scripts/digest-test.mjs

@@ -11,3 +11,6 @@ declare module "npm:postgres@3.4.5" {
   const postgres: (url: string, opts?: Record<string, unknown>) => Sql;
   export default postgres;
 }
+declare namespace Deno {
+  function serve(opts: Record<string, unknown>, handler: (req: Request) => Response | Promise<Response>): unknown;
+}

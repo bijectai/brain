@@ -128,6 +128,70 @@ const commands = {
     );
     console.table(rows);
   },
+
+  // --- Discord digest ------------------------------------------------------
+
+  async "set-discord"(project, url, label) {
+    if (!project || !url) {
+      throw new Error("usage: set-discord <project> <webhook-url> [channel-label]");
+    }
+    const p = await projectId(project);
+    // Registering seeds the watermark at now(), so enabling a webhook does not
+    // immediately replay the project's entire history into the channel.
+    await client.query(
+      `insert into public.discord_webhooks (project_id, webhook_url, channel_label)
+       values ($1, $2, $3)
+       on conflict (project_id) do update
+         set webhook_url = excluded.webhook_url,
+             channel_label = excluded.channel_label,
+             enabled = true, failure_count = 0, last_error = null`,
+      [p.id, url, label ?? null],
+    );
+    console.log(`digest for "${p.name}" -> ${label ?? "Discord"}`);
+    console.log("Only activity from now on is reported; history is not replayed.");
+  },
+
+  async "unset-discord"(project) {
+    if (!project) throw new Error("usage: unset-discord <project>");
+    const p = await projectId(project);
+    const { rowCount } = await client.query(
+      `delete from public.discord_webhooks where project_id = $1`,
+      [p.id],
+    );
+    console.log(rowCount ? `removed digest for ${p.name}` : `no digest for ${p.name}`);
+  },
+
+  async "list-discord"() {
+    const { rows } = await client.query(
+      `select p.name as project, w.channel_label, w.enabled,
+              w.last_digest_at, w.failure_count, w.last_error
+       from public.discord_webhooks w
+       join public.projects p on p.id = w.project_id
+       order by p.name`,
+    );
+    // webhook_url is deliberately not selected -- it is a credential.
+    console.table(rows);
+  },
+
+  async "init-digest-secret"() {
+    const secret = crypto.randomBytes(32).toString("base64url");
+    await client.query(`select app.set_system_secret('digest', $1)`, [secret]);
+
+    const { rows } = await client.query(`select current_database() as db`);
+    console.log(`\nDigest trigger secret (shown once): ${secret}\n`);
+    console.log("Schedule it with pg_cron, hourly at :07 to stay off the busy minute:\n");
+    console.log(`  create extension if not exists pg_net  with schema extensions;`);
+    console.log(`  create extension if not exists pg_cron;`);
+    console.log(`  select cron.schedule('kg-digest', '7 * * * *', $$`);
+    console.log(`    select net.http_post(`);
+    console.log(`      url     := 'https://<REF>.supabase.co/functions/v1/kg-digest',`);
+    console.log(`      headers := jsonb_build_object(`);
+    console.log(`        'Content-Type', 'application/json',`);
+    console.log(`        'Authorization', 'Bearer ${secret}'),`);
+    console.log(`      body    := '{}'::jsonb);`);
+    console.log(`  $$);\n`);
+    console.log(`(database: ${rows[0].db})`);
+  },
 };
 
 function quoteLiteral(s) {

@@ -41,11 +41,13 @@ One hardening step is outstanding: see [Hardening](#hardening).
 ## Layout
 
 ```
-supabase/migrations/    schema, RLS + roles, auth/admin functions, role membership
+supabase/migrations/    schema, RLS + roles, auth/admin functions, Discord digest
 supabase/functions/mcp/ the MCP server (index.ts, auth.ts, db.ts, tools.ts)
-scripts/admin.mjs       operator CLI: projects, tokens, grants, revocation
+supabase/functions/kg-digest/  scheduled Discord digest
+scripts/admin.mjs       operator CLI: projects, tokens, grants, Discord channels
 scripts/rls-test.sql    database-level isolation proof
 scripts/isolation-test.mjs  over-the-wire isolation proof
+scripts/digest-test.mjs over-the-wire digest proof, with a fake Discord
 scripts/local-test.sh   runs all of the above against a throwaway Postgres
 .mcp.json.example       Claude Code client config
 .cursor/mcp.json.example  Cursor client config
@@ -324,6 +326,18 @@ MCP `initialize` response, so compliant clients pick it up automatically.
 >
 > Record *why*, not *what*. The diff already says what changed; the graph is for
 > the reasoning that isn't recoverable from the code.
+
+### Discord digest
+
+A scheduled per-project summary of graph activity, posted to a Discord channel:
+what was added, what people recorded and why, who wrote it. One channel per
+project, and a channel only ever receives its own project's activity. See
+[docs/discord-digest.md](docs/discord-digest.md).
+
+```bash
+node scripts/admin.mjs set-discord biject 'https://discord.com/api/webhooks/…' '#eng-knowledge'
+node scripts/admin.mjs init-digest-secret
+```
 
 ### Onboarding a repo
 

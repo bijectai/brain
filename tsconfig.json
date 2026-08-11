@@ -10,5 +10,5 @@
     "skipLibCheck": true,
     "types": []
   },
-  "include": [".typecheck/shims.d.ts", "supabase/functions/mcp/*.ts"]
+  "include": [".typecheck/shims.d.ts", "supabase/functions/**/*.ts"]
 }
