@@ -9,12 +9,14 @@ export interface GraphNode extends NodeObject {
   entity_type: string;
 }
 
+// Brand green leads (bijectai/website palette), followed by complementary
+// tones that stay legible on the dark page.
 const TYPE_COLORS = [
+  "#10b981",
+  "#ef4444",
+  "#f0e15b",
   "#5b8cff",
   "#ff8f5b",
-  "#5bffb0",
-  "#ff5bd0",
-  "#f0e15b",
   "#9a5bff",
   "#5bf0ff",
 ];

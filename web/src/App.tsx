@@ -90,7 +90,10 @@ export default function App() {
   return (
     <div className="app-shell">
       <div className="topbar">
-        <h1>Biject Brain</h1>
+        <div className="brand">
+          <img className="brand-logo" src="/logo.png" alt="" />
+          <h1>biject brain</h1>
+        </div>
         <ProjectPicker
           projects={projects}
           selectedProject={selectedProject}

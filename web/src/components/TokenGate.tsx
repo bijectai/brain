@@ -27,8 +27,10 @@ export default function TokenGate({ onAuthenticated }: { onAuthenticated: (token
   return (
     <div className="token-gate">
       <form onSubmit={submit}>
-        <h1>Biject Brain</h1>
-        <p style={{ color: "var(--muted)", fontSize: 13, marginTop: 0 }}>
+        <img className="brand-logo" src="/logo.png" alt="" />
+        <p className="eyebrow">knowledge graph</p>
+        <h1>biject brain</h1>
+        <p style={{ color: "var(--muted)", fontSize: 13, marginTop: 8 }}>
           Paste your personal <code>kgt_…</code> knowledge graph token. It's stored only in this
           browser and sent directly to the graph API.
         </p>
