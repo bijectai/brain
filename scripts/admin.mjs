@@ -129,6 +129,90 @@ const commands = {
     console.table(rows);
   },
 
+  // --- Repos ---------------------------------------------------------------
+
+  async "add-repo"(project, name) {
+    if (!project || !name) throw new Error("usage: add-repo <project> <repo-name>");
+    const p = await projectId(project);
+    const { rows } = await client.query(`select * from app.add_repo($1, $2)`, [p.id, name]);
+    console.log(`repo ${rows[0].name} in ${p.name}  ${rows[0].id}`);
+  },
+
+  async "list-repos"(project) {
+    const p = project ? await projectId(project) : null;
+    const { rows } = await client.query(
+      `select pr.name as project, r.name as repo, r.created_at,
+              (select count(*) from public.entities e where e.repo_id = r.id) as entities
+       from public.repos r
+       join public.projects pr on pr.id = r.project_id
+       ${p ? "where r.project_id = $1" : ""}
+       order by pr.name, r.name`,
+      p ? [p.id] : [],
+    );
+    console.table(rows);
+
+    const { rows: shared } = await client.query(
+      `select pr.name as project, count(*) as project_wide_entities
+       from public.entities e join public.projects pr on pr.id = e.project_id
+       where e.repo_id is null ${p ? "and e.project_id = $1" : ""}
+       group by pr.name order by pr.name`,
+      p ? [p.id] : [],
+    );
+    if (shared.length) {
+      console.log("\nEntities belonging to no repo (conventions, people, decisions):");
+      console.table(shared);
+    }
+  },
+
+  // Renaming is a single row update: entities reference the repo by id, so
+  // every one of them follows automatically.
+  async "rename-repo"(project, oldName, newName) {
+    if (!project || !oldName || !newName) {
+      throw new Error("usage: rename-repo <project> <old-name> <new-name>");
+    }
+    const p = await projectId(project);
+    const { rows } = await client.query(
+      `select * from app.rename_repo($1, $2, $3)`,
+      [p.id, oldName, newName],
+    );
+    if (rows.length === 0) throw new Error(`No repo "${oldName}" in project ${p.name}`);
+    const { rows: counted } = await client.query(
+      `select count(*) as entities from public.entities where repo_id = $1`,
+      [rows[0].id],
+    );
+    console.log(
+      `renamed to ${rows[0].name}; ${counted[0].entities} entities followed automatically`,
+    );
+  },
+
+  // One-off backfill for a project whose graph predates multi-repo support.
+  // Only touches entities with no repo yet, so re-running is a no-op.
+  async "stamp-repo"(project, repo) {
+    if (!project || !repo) throw new Error("usage: stamp-repo <project> <repo-name>");
+    const p = await projectId(project);
+
+    const { rows: before } = await client.query(
+      `select count(*) filter (where repo_id is null) as unassigned,
+              count(*) as total
+       from public.entities where project_id = $1`,
+      [p.id],
+    );
+    console.log(`before: ${before[0].unassigned} of ${before[0].total} entities unassigned`);
+
+    const { rows } = await client.query(
+      `select * from app.stamp_unassigned_entities($1, $2)`,
+      [p.id, repo],
+    );
+    console.log(`stamped ${rows[0].entities_stamped} entities as "${repo}"`);
+
+    const { rows: after } = await client.query(
+      `select count(*) filter (where repo_id is null) as unassigned
+       from public.entities where project_id = $1`,
+      [p.id],
+    );
+    console.log(`after:  ${after[0].unassigned} entities still unassigned (project-wide)`);
+  },
+
   // --- Discord digest ------------------------------------------------------
 
   async "set-discord"(project, url, label) {

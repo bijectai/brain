@@ -29,7 +29,7 @@ Live on Supabase project `brain` (`litdbmyvvqrbpocohlpw`, us-east-2, Postgres 17
 | Piece | State |
 |---|---|
 | Schema + RLS migrations | Applied to production |
-| Edge Function (9 MCP tools) | Deployed, `verify_jwt = false`, responding |
+| Edge Function (10 MCP tools) | Deployed, `verify_jwt = false`, responding |
 | Tenants | `brain`, `biject`, `isolation-test` |
 | Tokens | `devrashie` on `brain`, `devrashie` on `biject`, `test-employee` on `isolation-test` |
 | Isolation verified | **Yes** — over HTTPS against this endpoint, and at the database level. See [Verification](#verification) |
@@ -41,13 +41,15 @@ One hardening step is outstanding: see [Hardening](#hardening).
 ## Layout
 
 ```
-supabase/migrations/    schema, RLS + roles, auth/admin functions, Discord digest
+supabase/migrations/    schema, RLS + roles, auth/admin fns, repos, Discord digest
 supabase/functions/mcp/ the MCP server (index.ts, auth.ts, db.ts, tools.ts)
 supabase/functions/kg-digest/  scheduled Discord digest
 scripts/admin.mjs       operator CLI: projects, tokens, grants, Discord channels
 scripts/rls-test.sql    database-level isolation proof
 scripts/isolation-test.mjs  over-the-wire isolation proof
 scripts/digest-test.mjs over-the-wire digest proof, with a fake Discord
+scripts/repo-test.mjs   multi-repo tool behaviour over HTTP
+scripts/backfill-test.sql  multi-repo schema + migration path
 scripts/local-test.sh   runs all of the above against a throwaway Postgres
 .mcp.json.example       Claude Code client config
 .cursor/mcp.json.example  Cursor client config
@@ -331,6 +333,18 @@ MCP `initialize` response, so compliant clients pick it up automatically.
 > Record *why*, not *what*. The diff already says what changed; the graph is for
 > the reasoning that isn't recoverable from the code.
 
+### Multi-repo
+
+A project holds several repos; entities carry a `repo`, and relations can cross
+repos — which is where the useful knowledge lives in a multi-repo setup. See
+[docs/multi-repo.md](docs/multi-repo.md).
+
+```bash
+node scripts/admin.mjs add-repo    biject bijectai/biject-api
+node scripts/admin.mjs rename-repo biject old-name new-name
+node scripts/admin.mjs stamp-repo  biject bijectai/biject-api   # backfill
+```
+
 ### Discord digest
 
 A scheduled per-project summary of graph activity, posted to a Discord channel:
@@ -386,9 +400,13 @@ context.
 | `delete_relations` | Remove specific edges. |
 | `delete_observations` | Retract facts, by id or exact content. |
 | `list_projects` | Projects this token can reach, with counts. |
+| `list_repos` | Repos registered in a project. Names must match exactly. |
 
 Every tool takes an optional `project` (name or id), required only when the
-token holds more than one.
+token holds more than one. Tools that name an entity also take an optional
+`repo` (`from_repo`/`to_repo` for relations) — needed only when a name exists in
+more than one repo, which is an error rather than a guess. See
+[docs/multi-repo.md](docs/multi-repo.md).
 
 ---
 

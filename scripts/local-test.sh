@@ -45,7 +45,10 @@ for f in supabase/migrations/*.sql; do
 done
 
 echo "== RLS suite (database level)"
-psql -v ON_ERROR_STOP=1 -f scripts/rls-test.sql 2>&1 | grep -E 'NOTICE|PASSED'
+psql -v ON_ERROR_STOP=1 -f scripts/rls-test.sql 2>&1 | grep -E "NOTICE|PASSED|ERROR|FAIL"
+
+echo "== backfill / multi-repo schema suite"
+psql -v ON_ERROR_STOP=1 -f scripts/backfill-test.sql 2>&1 | grep -E "NOTICE|PASSED|ERROR|FAIL"
 
 echo "== negative control -- the suite must FAIL when a policy is removed"
 psql -q -c "alter table public.entities disable row level security;"
@@ -96,6 +99,12 @@ for _ in $(seq 1 30); do
   curl -s -o /dev/null "http://127.0.0.1:$DIGEST_PORT" && break
   sleep 1
 done
+
+echo "== multi-repo suite"
+psql -q -c "select app.add_repo((select id from public.projects where name='acme-web'), 'acmeco/acme-api');" \
+  -c "select app.add_repo((select id from public.projects where name='acme-web'), 'acmeco/acme-web');"
+MCP_URL="http://127.0.0.1:$MCP_PORT" TOKEN_A=kgt_TESTA PROJECT=acme-web \
+  node scripts/repo-test.mjs
 
 echo "== Discord digest suite"
 MCP_URL="http://127.0.0.1:$MCP_PORT" \

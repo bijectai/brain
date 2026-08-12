@@ -253,8 +253,11 @@ await db.query(
   `alter table public.discord_webhooks add constraint discord_webhooks_url_is_discord
    check (webhook_url ~ '^https://(canary\\.|ptb\\.)?discord(app)?\\.com/api/webhooks/')`,
 );
-await call(TOKEN_A, "delete_entities", { project: "acme-web", names: ["AuthService", "TokenStore"] });
-await call(TOKEN_B, "delete_entities", { project: "acme-billing", names: ["Invoicer"] });
+await call(TOKEN_A, "delete_entities", {
+  project: "acme-web",
+  entities: [{ name: "AuthService" }, { name: "TokenStore" }],
+});
+await call(TOKEN_B, "delete_entities", { project: "acme-billing", entities: [{ name: "Invoicer" }] });
 await db.end();
 hook.close();
 

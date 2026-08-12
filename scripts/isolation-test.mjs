@@ -98,10 +98,10 @@ console.log(`Testing ${MCP_URL}\n`);
   const expected = [
     "add_observations", "create_entities", "create_relations",
     "delete_entities", "delete_observations", "delete_relations",
-    "list_projects", "read_graph", "search_nodes",
+    "list_projects", "list_repos", "read_graph", "search_nodes",
   ];
   check(
-    "all nine tools advertised",
+    "all ten tools advertised",
     JSON.stringify(names) === JSON.stringify(expected),
     names.join(", "),
   );
@@ -230,7 +230,7 @@ check("token B can write to its own project", true);
 
   const bDelete = await call(TOKEN_B, "delete_entities", {
     project: PROJECT_A,
-    names: [SECRET_A],
+    entities: [{ name: SECRET_A }],
   });
   check("token B cannot delete from project A", bDelete.isError);
 
@@ -259,9 +259,9 @@ check("token B can write to its own project", true);
 // -- clean up the fixtures -------------------------------------------------
 await call(TOKEN_A, "delete_entities", {
   project: PROJECT_A,
-  names: [SECRET_A, `${SECRET_A}_dep`],
+  entities: [{ name: SECRET_A }, { name: `${SECRET_A}_dep` }],
 });
-await call(TOKEN_B, "delete_entities", { project: PROJECT_B, names: [SECRET_B] });
+await call(TOKEN_B, "delete_entities", { project: PROJECT_B, entities: [{ name: SECRET_B }] });
 
 console.table(checks);
 if (failures > 0) {
