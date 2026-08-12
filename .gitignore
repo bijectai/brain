@@ -1,6 +1,8 @@
 node_modules/
 .env
 .env.local
+web/dist/
+web/*.tsbuildinfo
 .mcp.json
 .cursor/mcp.json
 supabase/.temp/

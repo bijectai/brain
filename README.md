@@ -30,6 +30,7 @@ Live on Supabase project `brain` (`litdbmyvvqrbpocohlpw`, us-east-2, Postgres 17
 |---|---|
 | Schema + RLS migrations | Applied to production |
 | Edge Function (10 MCP tools) | Deployed, `verify_jwt = false`, responding |
+| Web GUI backend (`web-api`) | Not yet deployed — see [docs/gui.md](docs/gui.md#deploying) |
 | Tenants | `brain`, `biject`, `isolation-test` |
 | Tokens | `devrashie` on `brain`, `devrashie` on `biject`, `test-employee` on `isolation-test` |
 | Isolation verified | **Yes** — over HTTPS against this endpoint, and at the database level. See [Verification](#verification) |
@@ -43,7 +44,9 @@ One hardening step is outstanding: see [Hardening](#hardening).
 ```
 supabase/migrations/    schema, RLS + roles, auth/admin fns, repos, Discord digest
 supabase/functions/mcp/ the MCP server (index.ts, auth.ts, db.ts, tools.ts)
+supabase/functions/web-api/  HTTP wrapper over the same tools, for the web GUI
 supabase/functions/kg-digest/  scheduled Discord digest
+web/                     the web GUI (Vite + React), see docs/gui.md
 scripts/admin.mjs       operator CLI: projects, tokens, grants, Discord channels
 scripts/rls-test.sql    database-level isolation proof
 scripts/isolation-test.mjs  over-the-wire isolation proof
@@ -251,6 +254,12 @@ Re-run `init-role`, then `supabase secrets set MCP_DB_URL=…` with the new valu
 and redeploy. Employee tokens are unaffected.
 
 ---
+
+## Web GUI
+
+Members can also browse and edit the graph by hand in a browser, without
+installing anything — see [docs/gui.md](docs/gui.md) for the deployed URL,
+how to get a token, and how to deploy/redeploy it.
 
 ## Client configuration
 

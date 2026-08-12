@@ -8,3 +8,9 @@ project_id = "litdbmyvvqrbpocohlpw"
 # here. The function itself refuses every unauthenticated request.
 verify_jwt = false
 entrypoint = "./functions/mcp/index.ts"
+
+[functions.web-api]
+# Same reasoning as functions.mcp: this endpoint also authenticates with our
+# own kgt_… tokens, not Supabase JWTs.
+verify_jwt = false
+entrypoint = "./functions/web-api/index.ts"
